@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
-import { Keyboard } from 'react-native';
+import { Keyboard, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-community/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import api from '../../services/api';
 import {
@@ -22,11 +23,29 @@ export default class Main extends Component {
     this.state = {
       newUser: '',
       users: [],
+      loading: false,
     };
   }
 
+  async componentDidMount() {
+    const users = await AsyncStorage.getItem('users');
+
+    if (users) {
+      this.setState({ users: JSON.parse(users) });
+    }
+  }
+
+  componentDidUpdate(_, prevState) {
+    const { users } = this.state;
+    if (prevState.users !== users) {
+      AsyncStorage.setItem('users', JSON.stringify(users));
+    }
+  }
+
   handleAddUser = async () => {
-    const { newUser, users } = this.state;
+    const { newUser, users, loading } = this.state;
+
+    this.setState({ loading: true });
 
     const response = await api.get(`/users/${newUser}`);
 
@@ -40,13 +59,14 @@ export default class Main extends Component {
     this.setState({
       newUser: '',
       users: [...users, data],
+      loading: false,
     });
 
     Keyboard.dismiss();
   };
 
   render() {
-    const { users, newUser } = this.state;
+    const { users, newUser, loading } = this.state;
     return (
       <Container>
         <Form>
@@ -59,8 +79,12 @@ export default class Main extends Component {
             returnKeyType="send"
             onSubmitEditing={this.handleAddUser}
           />
-          <SubmitButton onPress={this.handleAddUser}>
-            <Icon name="add" size={20} color="#FFF" />
+          <SubmitButton loading={loading} onPress={this.handleAddUser}>
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Icon name="add" size={20} color="#FFF" />
+            )}
           </SubmitButton>
         </Form>
 
